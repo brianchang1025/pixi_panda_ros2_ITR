@@ -120,13 +120,13 @@ def generate_launch_description():
         Node(
             package='controller_manager',
             executable='spawner',
-            arguments=['joint_state_broadcaster'],
+            arguments=['joint_state_broadcaster', '--param-file', franka_controllers],
             output='screen',
         ),
         Node(
             package='controller_manager',
             executable='spawner',
-            arguments=['franka_robot_state_broadcaster'],
+            arguments=['franka_robot_state_broadcaster', '--param-file', franka_controllers],
             output='screen',
             condition=UnlessCondition(use_fake_hardware),
         ),
@@ -150,25 +150,51 @@ def generate_launch_description():
         Node(
             package="controller_manager",
             executable="spawner",
-            arguments=["cartesian_impedance_controller", "--inactive"],
+            arguments=[
+                "joint_trajectory_controller",
+                "--inactive",
+                "--param-file",
+                franka_controllers,
+            ],
             output="screen",
         ),
         Node(
             package="controller_manager",
             executable="spawner",
-            arguments=["joint_impedance_controller", "--inactive"],
+            arguments=[
+                "cartesian_impedance_controller",
+                "--inactive",
+                "--param-file",
+                franka_controllers,
+            ],
             output="screen",
         ),
         Node(
             package="controller_manager",
             executable="spawner",
-            arguments=["gravity_compensation", "--inactive"],
+            arguments=[
+                "joint_impedance_controller",
+                "--inactive",
+                "--param-file",
+                franka_controllers,
+            ],
             output="screen",
         ),
         Node(
             package="controller_manager",
             executable="spawner",
-            arguments=["pose_broadcaster"],
+            arguments=[
+                "gravity_compensation",
+                "--inactive",
+                "--param-file",
+                franka_controllers,
+            ],
+            output="screen",
+        ),
+        Node(
+            package="controller_manager",
+            executable="spawner",
+            arguments=["pose_broadcaster", "--param-file", franka_controllers],
             output="screen",
         ),
     ])
