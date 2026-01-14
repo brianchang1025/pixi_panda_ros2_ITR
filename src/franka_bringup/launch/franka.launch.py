@@ -40,6 +40,8 @@ def robot_description_dependent_nodes_spawner(
     load_gripper,
     arm_prefix,
     start_robot_state_publisher,
+    robot_description_arg,
+    controllers_file_arg,
 ):
     robot_ip_str = context.perform_substitution(robot_ip)
     arm_id_str = context.perform_substitution(arm_id)
@@ -61,18 +63,28 @@ def robot_description_dependent_nodes_spawner(
         "use_fake_hardware": use_fake_hardware_str,
         "fake_sensor_commands": fake_sensor_commands_str,
     }
-    franka_controllers = PathJoinSubstitution(
-        [
-            FindPackageShare("franka_bringup"),
-            "config",
-            "controllers.yaml",
-        ]
-    )
 
-    robot_description = xacro.process_file(
-        franka_xacro_filepath,
-        mappings=mappings,
-    ).toprettyxml(indent="  ")
+    robot_description_val = context.perform_substitution(robot_description_arg)
+    controllers_file_val = context.perform_substitution(controllers_file_arg)
+
+    if robot_description_val:
+        robot_description = robot_description_val
+    else:
+        robot_description = xacro.process_file(
+            franka_xacro_filepath,
+            mappings=mappings,
+        ).toprettyxml(indent="  ")
+
+    if controllers_file_val:
+        franka_controllers = controllers_file_val
+    else:
+        franka_controllers = PathJoinSubstitution(
+            [
+                FindPackageShare("franka_bringup"),
+                "config",
+                "controllers.yaml",
+            ]
+        )
 
     nodes = [
         Node(
@@ -135,6 +147,8 @@ def generate_launch_description():
     fake_sensor_commands_parameter_name = "fake_sensor_commands"
     use_rviz_parameter_name = "use_rviz"
     start_robot_state_publisher_name = "start_robot_state_publisher"
+    robot_description_parameter_name = "robot_description"
+    controllers_file_parameter_name = "controllers_file"
 
     arm_id = LaunchConfiguration(arm_id_parameter_name)
     arm_prefix = LaunchConfiguration(arm_prefix_parameter_name)
@@ -144,6 +158,8 @@ def generate_launch_description():
     fake_sensor_commands = LaunchConfiguration(fake_sensor_commands_parameter_name)
     use_rviz = LaunchConfiguration(use_rviz_parameter_name)
     start_robot_state_publisher = LaunchConfiguration(start_robot_state_publisher_name)
+    robot_description = LaunchConfiguration(robot_description_parameter_name)
+    controllers_file = LaunchConfiguration(controllers_file_parameter_name)
 
     rviz_file = os.path.join(
         get_package_share_directory("franka_description"),
@@ -161,6 +177,8 @@ def generate_launch_description():
             load_gripper,
             arm_prefix,
             start_robot_state_publisher,
+            robot_description,
+            controllers_file,
         ],
     )
 
@@ -207,6 +225,16 @@ def generate_launch_description():
                 start_robot_state_publisher_name,
                 default_value="true",
                 description="",
+            ),
+            DeclareLaunchArgument(
+                robot_description_parameter_name,
+                default_value="",
+                description="Optional robot description to usage instead of generating it from xacro.",
+            ),
+            DeclareLaunchArgument(
+                controllers_file_parameter_name,
+                default_value="",
+                description="Optional path to controllers yaml file.",
             ),
             Node(
                 package="joint_state_publisher",
