@@ -112,6 +112,22 @@ class GripperClient:
                 rate.sleep()
 
             rate.destroy()
+    
+    def move(self, width: float, speed: float = 0.1):
+        """Moves the gripper to a specific width without expecting to grasp an object."""
+        from franka_msgs.action import Move
+        if not hasattr(self, '_move_client'):
+            self._move_client = ActionClient(
+                self._node,
+                Move,
+                f"panda_gripper/move", # ensure namespace is correct
+                callback_group=ReentrantCallbackGroup(),
+            )
+        
+        goal = Move.Goal()
+        goal.width = width
+        goal.speed = speed
+        self._move_client.send_goal_async(goal)
 
     def close(self, **grasp_kwargs):
         """Close the gripper.
@@ -191,24 +207,27 @@ class CrispPyGripperAdapater(Node):
         """Callback to the gripper command."""
         # NOTE: this only allows to open and close. The FrankaHand is not super responsive anyway, this is just a
         # temporary node...
-        gripper_command = msg.data[0]
+        
+        gripper_command = msg.data[0] * 0.08 
         self.get_logger().info(f"Received a command to move the gripper: {msg}")
+        self.gripper_client.move(width=gripper_command)
 
-        if (
-            gripper_command <= 0.5
-            and self.gripper_client.is_open()
-            and not self.is_closing
-        ):
-            self.gripper_client.close()
-            self.is_closing = True
-        elif (
-            gripper_command > 0.5
-            and not self.gripper_client.is_open()
-            and self.is_closing
-        ):
-            self.gripper_client.open()
-            self.is_closing = False
-
+        
+        #if (
+            #gripper_command <= 0.5
+            #and self.gripper_client.is_open()
+            #and not self.is_closing
+        #):
+            #self.gripper_client.close()
+            #self.is_closing = True
+        #elif (
+            #gripper_command > 0.5
+            #and not self.gripper_client.is_open()
+            #and self.is_closing
+        #):
+            #self.gripper_client.open()
+            #self.is_closing = False
+    
 
 def main():
     rclpy.init()
