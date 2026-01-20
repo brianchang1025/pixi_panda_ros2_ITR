@@ -15,6 +15,7 @@
 
 import os
 
+
 import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchContext, LaunchDescription
@@ -91,6 +92,7 @@ def robot_description_dependent_nodes_spawner(
             package="robot_state_publisher",
             executable="robot_state_publisher",
             name="robot_state_publisher",
+            namespace=arm_prefix_str,
             output="screen",
             parameters=[{"robot_description": robot_description}],
             condition=IfCondition(start_robot_state_publisher),
@@ -98,6 +100,7 @@ def robot_description_dependent_nodes_spawner(
         Node(
             package="controller_manager",
             executable="ros2_control_node",
+            namespace=arm_prefix_str,
             parameters=[
                 franka_controllers,
                 {"robot_description": robot_description},
@@ -131,6 +134,7 @@ def robot_description_dependent_nodes_spawner(
                 package="controller_manager",
                 executable="spawner",
                 arguments=spawner_args,
+                namespace=arm_prefix_str,
                 output="screen",
             )
         )
@@ -240,10 +244,11 @@ def generate_launch_description():
                 package="joint_state_publisher",
                 executable="joint_state_publisher",
                 name="joint_state_publisher",
+                namespace=arm_prefix,
                 parameters=[
                     {
                         "source_list": [
-                            "franka/joint_states",
+                            "joint_states",
                             "panda_gripper/joint_states",
                         ],
                         "rate": 1000,
@@ -274,6 +279,7 @@ def generate_launch_description():
                 package="franka_bringup",
                 executable="crisp_py_gripper_adapter.py",
                 name="crisp_py_gripper_adapter",
+                namespace=arm_prefix,
                 output="screen",
                 condition=IfCondition(load_gripper),
             ),
@@ -281,6 +287,7 @@ def generate_launch_description():
                 package="rviz2",
                 executable="rviz2",
                 name="rviz2",
+                namespace=arm_prefix,
                 arguments=["--display-config", rviz_file],
                 condition=IfCondition(use_rviz),
             ),
