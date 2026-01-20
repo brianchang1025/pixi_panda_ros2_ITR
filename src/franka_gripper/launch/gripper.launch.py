@@ -26,10 +26,12 @@ def generate_launch_description():
     robot_ip_parameter_name = 'robot_ip'
     use_fake_hardware_parameter_name = 'use_fake_hardware'
     arm_parameter_name = 'arm_id'
+    arm_prefix_parameter_name = "arm_prefix"
     joint_names_parameter_name = 'joint_names'
     robot_ip = LaunchConfiguration(robot_ip_parameter_name)
     use_fake_hardware = LaunchConfiguration(use_fake_hardware_parameter_name)
     arm_id = LaunchConfiguration(arm_parameter_name)
+    arm_prefix = LaunchConfiguration(arm_prefix_parameter_name)
     joint_names = LaunchConfiguration(joint_names_parameter_name)
 
     gripper_config = os.path.join(get_package_share_directory('franka_gripper'), 'config',
@@ -60,6 +62,7 @@ def generate_launch_description():
             package='franka_gripper',
             executable='franka_gripper_node',
             name=[arm_id, '_gripper'],
+            namespace=arm_prefix,
             parameters=[{'robot_ip': robot_ip, 'joint_names': joint_names}, gripper_config],
             condition=UnlessCondition(use_fake_hardware)
         ),
@@ -67,6 +70,7 @@ def generate_launch_description():
             package='franka_gripper',
             executable='fake_gripper_state_publisher.py',
             name=[arm_id, '_gripper'],
+            namespace=arm_prefix,
             parameters=[{'robot_ip': robot_ip, 'joint_names': joint_names}, gripper_config],
             condition=IfCondition(use_fake_hardware)
         ),
