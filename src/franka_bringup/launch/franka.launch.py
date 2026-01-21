@@ -105,7 +105,7 @@ def robot_description_dependent_nodes_spawner(
                 franka_controllers,
                 {"robot_description": robot_description},
             ],
-            remappings=[("joint_states", "franka/joint_states")],
+            remappings=[("joint_states", "panda/joint_states")],
             output={
                 "stdout": "screen",
                 "stderr": "screen",
@@ -118,7 +118,7 @@ def robot_description_dependent_nodes_spawner(
         ["joint_state_broadcaster"],
         ["cartesian_impedance_controller", "--inactive"],
         ["joint_impedance_controller", "--inactive"],
-        ["joint_trajectory_controller"],
+        ["joint_trajectory_controller", "--inactive"],
         ["twist_broadcaster"],
         ["pose_broadcaster"],
         ["torque_feedback_controller", "--inactive"],
@@ -248,7 +248,7 @@ def generate_launch_description():
                 parameters=[
                     {
                         "source_list": [
-                            "joint_states",
+                            "panda/joint_states",
                             "panda_gripper/joint_states",
                         ],
                         "rate": 1000,
