@@ -3,13 +3,15 @@
 # %%
 import matplotlib.pyplot as plt
 import numpy as np
-
+import time
+import rclpy
 from crisp_py.robot import make_robot
 
 # %%
-robot = make_robot("panda")
-
+robot = make_robot("panda_left")
 robot.wait_until_ready()
+right_arm = make_robot("panda_right")
+right_arm.wait_until_ready()
 
 # %%
 print("Initial end-effector pose and joint values:")
@@ -19,6 +21,7 @@ print(robot.joint_values)
 # %%
 print("Going to home position...")
 robot.home(blocking=True)
+right_arm.home(blocking=True)
 homing_pose = robot.end_effector_pose.copy()
 
 
@@ -33,6 +36,18 @@ max_time = 8.0
 
 # %%
 robot.controller_switcher_client.switch_controller("cartesian_impedance_controller")
+right_arm.controller_switcher_client.switch_controller("joint_impedance_controller")
+
+print(f"Left arm joint values: {robot.joint_values}")
+print(f"Right arm joint values: {right_arm.joint_values}")
+
+# %%
+def sync(robot, right_arm):
+    right_arm.set_target_joint(robot.joint_values)
+    
+
+print("Ready for teleop...")
+right_arm.node.create_timer(1.0 / 100.0, lambda: sync(robot, right_arm))
 
 # %%
 # The move_to function will publish a pose to /target_pose while interpolation linearly
@@ -50,7 +65,7 @@ t = 0.0
 target_pose = robot.end_effector_pose.copy()
 rate = robot.node.create_rate(ctrl_freq)
 
-while t < max_time:
+while True:
     x = center[0]
     y = radius * np.sin(2 * np.pi * sin_freq_y * t) + center[1]
     z = radius * np.sin(2 * np.pi * sin_freq_z * t) + center[2]
@@ -63,52 +78,11 @@ while t < max_time:
     ee_poses.append(robot.end_effector_pose.copy())
     target_poses.append(robot._target_pose.copy())
     ts.append(t)
-
+    print(f"Left arm joint values: {robot.joint_values}")
+    print(f"Right arm joint values: {right_arm.joint_values}")
+    time.sleep(1.0)
     t += 1.0 / ctrl_freq
 
-while t < max_time + 1.0:
-    # Just wait a bit for the end effector to settle
-
-    rate.sleep()
-
-    ee_poses.append(robot.end_effector_pose.copy())
-    target_poses.append(robot._target_pose.copy())
-    ts.append(t)
-
-    t += 1.0 / ctrl_freq
-
-
-print("Done drawing a circle!")
-print("Please close the plot window to continue...")
-
-
-# %%
-y_t = [target_pose_sample.position[1] for target_pose_sample in target_poses]
-z_t = [target_pose_sample.position[2] for target_pose_sample in target_poses]
-
-# %%
-# === Normal params ===
-y_ee = [ee_pose.position[1] for ee_pose in ee_poses]
-z_ee = [ee_pose.position[2] for ee_pose in ee_poses]
-
-# %%
-fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-ax[0].plot(y_ee, z_ee, label="current")
-ax[0].plot(y_t, z_t, label="target", linestyle="--")
-ax[0].set_xlabel("$y$")
-ax[0].set_ylabel("$z$")
-# ax[0].legend()
-ax[1].plot(ts, z_ee, label="current")
-ax[1].plot(ts, z_t, label="target", linestyle="--")
-ax[1].set_xlabel("$t$")
-ax[1].legend()
-
-for a in ax:
-    a.grid()
-
-fig.tight_layout()
-
-plt.show()
 
 # %%
 

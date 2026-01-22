@@ -10,12 +10,13 @@ right_arm.wait_until_ready()
 
 # %%
 print("Going to home position...")
-left_arm.home(blocking=False)
+left_arm.home(blocking=True)
 right_arm.home(blocking=True)
 
-left_arm.controller_switcher_client.deactivate_all_motion_controllers()
-right_arm.controller_switcher_client.deactivate_all_motion_controllers()
+#left_arm.controller_switcher_client.deactivate_all_motion_controllers()
+#right_arm.controller_switcher_client.deactivate_all_motion_controllers()
 
+time.sleep(0.5)
 print("Switching to teleop controllers...")
 # %%
 left_arm.controller_switcher_client.switch_controller("gravity_compensation")

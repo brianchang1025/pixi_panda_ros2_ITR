@@ -919,7 +919,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb8e6e7a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zziplib-0.13.69-he45264a_2.conda
-      - pypi: git+https://github.com/brianchang1025/crisp_py_panda#7e4706f9dafac85aeda53cff7c82b9da45cbe277
+      - pypi: git+https://github.com/brianchang1025/crisp_py_panda#161ab4abc8797c8852229242285140d9d7b971c4
       - pypi: https://files.pythonhosted.org/packages/b5/36/7fb70f04bf00bc646cd5bb45aa9eddb15e19437a28b8fb2b4a5249fac770/filelock-3.20.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ae/93/f36d89fa021543187f98991609ce6e47e24f35f008dfe1af01379d248a41/ruff-0.14.11-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 packages:
@@ -1877,7 +1877,7 @@ packages:
   - pkg:pypi/cppcheck-htmlreport?source=hash-mapping
   size: 2886675
   timestamp: 1744040683266
-- pypi: git+https://github.com/brianchang1025/crisp_py_panda#7e4706f9dafac85aeda53cff7c82b9da45cbe277
+- pypi: git+https://github.com/brianchang1025/crisp_py_panda#161ab4abc8797c8852229242285140d9d7b971c4
   name: crisp-python
   version: 3.0.0
   requires_dist:
