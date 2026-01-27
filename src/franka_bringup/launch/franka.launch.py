@@ -180,11 +180,11 @@ def generate_launch_description():
         args=[
             robot_ip,
             arm_id,
+            arm_prefix,
             namespace,
+            load_gripper,
             use_fake_hardware,
             fake_sensor_commands,
-            load_gripper,
-            arm_prefix,
             start_robot_state_publisher,
             robot_description,
             controllers_file,
