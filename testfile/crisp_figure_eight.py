@@ -77,11 +77,11 @@ while True:
 
     ee_poses.append(robot.end_effector_pose.copy())
     target_poses.append(robot._target_pose.copy())
-    ts.append(t)
+    
     print(f"Left arm joint values: {robot.joint_values}")
     print(f"Right arm joint values: {right_arm.joint_values}")
-    time.sleep(1.0)
-    t += 1.0 / ctrl_freq
+    
+   
 
 
 # %%

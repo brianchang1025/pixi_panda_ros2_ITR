@@ -36,10 +36,11 @@ def robot_description_dependent_nodes_spawner(
     context: LaunchContext,
     robot_ip,
     arm_id,
+    arm_prefix,
+    namespace,
+    load_gripper,
     use_fake_hardware,
     fake_sensor_commands,
-    load_gripper,
-    arm_prefix,
     start_robot_state_publisher,
     robot_description_arg,
     controllers_file_arg,
@@ -47,6 +48,7 @@ def robot_description_dependent_nodes_spawner(
     robot_ip_str = context.perform_substitution(robot_ip)
     arm_id_str = context.perform_substitution(arm_id)
     arm_prefix_str = context.perform_substitution(arm_prefix)
+    namespace_str = context.perform_substitution(namespace)
     use_fake_hardware_str = context.perform_substitution(use_fake_hardware)
     fake_sensor_commands_str = context.perform_substitution(fake_sensor_commands)
     load_gripper_str = context.perform_substitution(load_gripper)
@@ -92,7 +94,7 @@ def robot_description_dependent_nodes_spawner(
             package="robot_state_publisher",
             executable="robot_state_publisher",
             name="robot_state_publisher",
-            namespace=arm_prefix_str,
+            namespace=namespace_str,
             output="screen",
             parameters=[{"robot_description": robot_description}],
             condition=IfCondition(start_robot_state_publisher),
@@ -100,7 +102,7 @@ def robot_description_dependent_nodes_spawner(
         Node(
             package="controller_manager",
             executable="ros2_control_node",
-            namespace=arm_prefix_str,
+            namespace=namespace_str,
             parameters=[
                 franka_controllers,
                 {"robot_description": robot_description},
@@ -134,7 +136,7 @@ def robot_description_dependent_nodes_spawner(
                 package="controller_manager",
                 executable="spawner",
                 arguments=spawner_args,
-                namespace=arm_prefix_str,
+                namespace=namespace_str,
                 output="screen",
             )
         )
@@ -143,9 +145,10 @@ def robot_description_dependent_nodes_spawner(
 
 
 def generate_launch_description():
+    robot_ip_parameter_name = "robot_ip"
     arm_id_parameter_name = "arm_id"
     arm_prefix_parameter_name = "arm_prefix"
-    robot_ip_parameter_name = "robot_ip"
+    namespace_parameter_name = "namespace"
     load_gripper_parameter_name = "load_gripper"
     use_fake_hardware_parameter_name = "use_fake_hardware"
     fake_sensor_commands_parameter_name = "fake_sensor_commands"
@@ -154,9 +157,10 @@ def generate_launch_description():
     robot_description_parameter_name = "robot_description"
     controllers_file_parameter_name = "controllers_file"
 
+    robot_ip = LaunchConfiguration(robot_ip_parameter_name)
     arm_id = LaunchConfiguration(arm_id_parameter_name)
     arm_prefix = LaunchConfiguration(arm_prefix_parameter_name)
-    robot_ip = LaunchConfiguration(robot_ip_parameter_name)
+    namespace = LaunchConfiguration(namespace_parameter_name)
     load_gripper = LaunchConfiguration(load_gripper_parameter_name)
     use_fake_hardware = LaunchConfiguration(use_fake_hardware_parameter_name)
     fake_sensor_commands = LaunchConfiguration(fake_sensor_commands_parameter_name)
@@ -176,6 +180,7 @@ def generate_launch_description():
         args=[
             robot_ip,
             arm_id,
+            namespace,
             use_fake_hardware,
             fake_sensor_commands,
             load_gripper,
@@ -196,6 +201,11 @@ def generate_launch_description():
                 arm_id_parameter_name,
                 description="ID of the type of arm used. Supported values: panda",
                 default_value="panda",
+            ),
+            DeclareLaunchArgument(
+                namespace_parameter_name,
+                description="Namespace for the ros topics. Supported values: left, right, or empty",
+                default_value="",
             ),
             DeclareLaunchArgument(
                 use_rviz_parameter_name,
@@ -244,7 +254,7 @@ def generate_launch_description():
                 package="joint_state_publisher",
                 executable="joint_state_publisher",
                 name="joint_state_publisher",
-                namespace=arm_prefix,
+                namespace=namespace,
                 parameters=[
                     {
                         "source_list": [
@@ -279,7 +289,7 @@ def generate_launch_description():
                 package="franka_bringup",
                 executable="crisp_py_gripper_adapter.py",
                 name="crisp_py_gripper_adapter",
-                namespace=arm_prefix,
+                namespace=namespace,
                 output="screen",
                 condition=IfCondition(load_gripper),
             ),
@@ -287,7 +297,7 @@ def generate_launch_description():
                 package="rviz2",
                 executable="rviz2",
                 name="rviz2",
-                namespace=arm_prefix,
+                namespace=namespace,
                 arguments=["--display-config", rviz_file],
                 condition=IfCondition(use_rviz),
             ),

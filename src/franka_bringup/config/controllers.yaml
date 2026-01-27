@@ -57,7 +57,7 @@
 
   joint_state_broadcaster:
     ros__parameters:
-      use_local_topics: True
+      use_local_topics: False
 
   twist_broadcaster:
     ros__parameters:
