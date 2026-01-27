@@ -18,10 +18,15 @@ print("Initial end-effector pose and joint values:")
 print(robot.end_effector_pose)
 print(robot.joint_values)
 
+def sync(robot, right_arm):
+    right_arm.set_target_joint(robot.joint_values)
+    
+print("Ready for follow left arm ")
+right_arm.node.create_timer(1.0 / 100.0, lambda: sync(robot, right_arm))
+right_arm.controller_switcher_client.switch_controller("joint_impedance_controller")
 # %%
 print("Going to home position...")
 robot.home(blocking=True)
-right_arm.home(blocking=True)
 homing_pose = robot.end_effector_pose.copy()
 
 
@@ -36,18 +41,13 @@ max_time = 8.0
 
 # %%
 robot.controller_switcher_client.switch_controller("cartesian_impedance_controller")
-right_arm.controller_switcher_client.switch_controller("joint_impedance_controller")
+
 
 print(f"Left arm joint values: {robot.joint_values}")
 print(f"Right arm joint values: {right_arm.joint_values}")
 
 # %%
-def sync(robot, right_arm):
-    right_arm.set_target_joint(robot.joint_values)
-    
 
-print("Ready for teleop...")
-right_arm.node.create_timer(1.0 / 100.0, lambda: sync(robot, right_arm))
 
 # %%
 # The move_to function will publish a pose to /target_pose while interpolation linearly
@@ -80,7 +80,9 @@ while True:
     
     print(f"Left arm joint values: {robot.joint_values}")
     print(f"Right arm joint values: {right_arm.joint_values}")
-    
+    ts.append(t)
+
+    t += 1.0 / ctrl_freq
    
 
 

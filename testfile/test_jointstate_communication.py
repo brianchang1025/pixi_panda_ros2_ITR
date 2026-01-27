@@ -1,4 +1,4 @@
-import rclpy
+
 import time
 from crisp_py.robot import make_robot
 
@@ -18,8 +18,8 @@ print("Ready for manual teleop...")
 
 
 try:
-    while rclpy.ok():
-        rclpy.spin_once(robot.node, timeout_sec=0.01)
+    while True:
+        
         print(f"Robot current joint values: {robot.joint_values}")
         print("-" * 40)
         time.sleep(1.0)
