@@ -259,7 +259,7 @@ def generate_launch_description():
                     {
                         "source_list": [
                             "panda/joint_states",
-                            "panda_gripper/joint_states",
+                            "gripper/joint_states",
                         ],
                         "rate": 1000,
                     }

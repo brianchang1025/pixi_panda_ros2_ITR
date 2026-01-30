@@ -262,12 +262,7 @@ hardware_interface::return_type FrankaMultiHardwareInterface::read(const rclcpp:
     //           << cor[6] << " " 
     //   << std::endl;
     // This prints the first joint's position every ~1 second (assuming 1000Hz loop)
-    static int count = 0;
-    if (count++ % 1000 == 0) {
-        std::cout << "[DEBUG] Heartbeat: Loop is running. Raw J1: " 
-                  << arm.hw_franka_robot_state_.q[0] << std::endl;
-    }
-    // --- YOUR DEBUG LINES END HERE ---
+    
     
     arm.hw_positions_ = arm.hw_franka_robot_state_.q;
     arm.hw_velocities_ = arm.hw_franka_robot_state_.dq;
