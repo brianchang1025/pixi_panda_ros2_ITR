@@ -4,7 +4,7 @@ from crisp_py.robot import make_robot
 
 # %%
 
-robot = make_robot("panda")
+robot = make_robot("panda_left")
 print("Waiting for robot to be ready...")
 robot.wait_until_ready()
 print(f"Robot current joint values: {robot.joint_values}")
