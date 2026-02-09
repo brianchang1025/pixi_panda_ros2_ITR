@@ -5,7 +5,7 @@
 from time import time
 
 import rclpy
-from franka_msgs.action import Grasp, Homing
+from franka_msgs.action import Grasp, Homing, Move
 from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
@@ -22,6 +22,12 @@ class GripperClient:
 
         # The namespace for the gripper might change
         # check https://github.com/frankaemika/franka_ros2/issues/121
+        self._move_client = ActionClient(
+            node, 
+            Move, 
+            f"{gripper_namespace}/move",
+            callback_group=ReentrantCallbackGroup(),
+        )
         self._grasp_client = ActionClient(
             node,
             Grasp,
@@ -72,6 +78,12 @@ class GripperClient:
         """Homes the gripper."""
         goal = Homing.Goal()
         self._home_client.send_goal_async(goal)
+    
+    def move(self, width: float, speed: float = 0.1):
+        goal = Move.Goal()
+        goal.width = width
+        goal.speed = speed
+        self._move_client.send_goal_async(goal)
 
     def grasp(
         self,
@@ -112,22 +124,7 @@ class GripperClient:
                 rate.sleep()
 
             rate.destroy()
-    
-    def move(self, width: float, speed: float = 0.1):
-        """Moves the gripper to a specific width without expecting to grasp an object."""
-        from franka_msgs.action import Move
-        if not hasattr(self, '_move_client'):
-            self._move_client = ActionClient(
-                self._node,
-                Move,
-                f"panda_gripper/move", # ensure namespace is correct
-                callback_group=ReentrantCallbackGroup(),
-            )
-        
-        goal = Move.Goal()
-        goal.width = width
-        goal.speed = speed
-        self._move_client.send_goal_async(goal)
+
 
     def close(self, **grasp_kwargs):
         """Close the gripper.
@@ -135,7 +132,7 @@ class GripperClient:
         Args:
             **grasp_kwargs: Keyword arguments to pass to the grasp function. (check the grasp function for details)
         """
-        self.grasp(width=0.0, **grasp_kwargs)
+        self.grasp(width=0.04, **grasp_kwargs)
 
     def open(self, **grasp_kwargs):
         """Open the gripper.
@@ -189,6 +186,7 @@ class CrispPyGripperAdapater(Node):
 
         self.create_timer(1 / self.joint_state_freq, self.callback_publish_joint_state)
         self.get_logger().info("The crisp_py gripper adapter started.")
+        self.last_sent_width = None
 
     def callback_publish_joint_state(self):
         if self.gripper_client.width is None:
@@ -198,35 +196,50 @@ class CrispPyGripperAdapater(Node):
         msg.header.stamp = self.get_clock().now().to_msg()
 
         msg.name = ["gripper_joint"]
-        msg.position = [self.gripper_client.width / 0.08]
+        msg.position = [self.gripper_client.width]
         msg.effort = [0.0]
 
         self.joint_state_publisher.publish(msg)
 
     def callback_command(self, msg: Float64MultiArray):
         """Callback to the gripper command."""
-        # NOTE: this only allows to open and close. The FrankaHand is not super responsive anyway, this is just a
-        # temporary node...
+        # NOTE: this only temporaily set to control the gripper with move function.
+        # For future work and teleoperation, it is necessary to use grasp function
+        gripper_command = round(msg.data[0], 3)
         
-        gripper_command = msg.data[0] * 0.08 
-        self.get_logger().info(f"Received a command to move the gripper: {msg}")
-        self.gripper_client.move(width=gripper_command)
+        #self.gripper_client.move(width=gripper_command, speed=0.1)
 
-        
-        #if (
-            #gripper_command <= 0.5
-            #and self.gripper_client.is_open()
-            #and not self.is_closing
-        #):
-            #self.gripper_client.close()
-            #self.is_closing = True
-        #elif (
-            #gripper_command > 0.5
-            #and not self.gripper_client.is_open()
-            #and self.is_closing
-        #):
-            #self.gripper_client.open()
-            #self.is_closing = False
+
+        # if self.last_sent_width is None :
+        #     self.gripper_client.move(width=gripper_command, speed=0.2)
+        #     self.last_sent_width = gripper_command
+
+        # if  gripper_command != self.last_sent_width:
+        #     self.gripper_client.move(width=gripper_command, speed=0.2)
+        #     self.get_logger().info(f"Received a command to move the gripper: {msg}")
+        #     print(f"Received gripper command: {gripper_command}")
+        #     self.last_sent_width = gripper_command
+
+        # self.gripper_client.move(width=gripper_command, speed=0.1)
+        self.get_logger().info(f"Received a command to move the gripper: {msg}")
+        print(f"Received gripper command: {gripper_command}")
+
+        if (
+            gripper_command <= 0.065
+            and self.gripper_client.is_open()
+            and not self.is_closing
+        ):
+            self.gripper_client.close()
+            self.is_closing = True
+            print("Closing gripper")
+        elif (
+            gripper_command > 0.04
+            and not self.gripper_client.is_open()
+            and self.is_closing
+        ):
+            self.gripper_client.open()
+            self.is_closing = False
+            print("Opening gripper")
     
 
 def main():
