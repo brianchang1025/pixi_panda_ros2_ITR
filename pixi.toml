@@ -30,6 +30,7 @@ channels = ["https://prefix.dev/robostack-jazzy"]
 colcon-common-extensions = "*"
 pinocchio = ">=3.4.0,<4"
 poco = "<1.13.0"
+
 ros-jazzy-desktop = "*"
 ros-jazzy-joint-state-publisher = ">=2.4.0,<3"
 ros-jazzy-rmw-cyclonedds-cpp = "*"
@@ -44,9 +45,9 @@ ros-jazzy-topic-tools-interfaces = ">=1.3.3,<2"
 [feature.jazzy.tasks]
 update-submodules = "git submodule update --init --recursive"
 clone-crisp = "test -d src/crisp_controllers || git clone https://github.com/utiasDSL/crisp_controllers.git src/crisp_controllers"
-clone-buttons = "test -d src/franka-buttons || git clone https://github.com/nakama-lab/franka-buttons.git src/franka-buttons"
+
 build = "colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -Wno-dev --symlink-install"
-setup = { depends-on = ["update-submodules", "clone-crisp", "build"] }
+setup = { depends-on = ["update-submodules", "clone-crisp",  "build"] }
 franka = "ros2 launch franka_bringup franka.launch.py"
 
 # Development tools
