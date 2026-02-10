@@ -1,5 +1,7 @@
 # ...existing code...
 #!/usr/bin/env python3
+import threading
+import rclpy
 import os
 import shlex
 import shutil
@@ -9,6 +11,7 @@ import sys
 import tempfile
 import time
 from typing import Optional
+from franka_bridge_node import FrankaWebBridge  # Ensure this is in the same directory or properly installed
 
 TMPDIR = os.environ.get("TMPDIR") or tempfile.mkdtemp(prefix="panda_connect.")
 LOG1 = os.path.join(TMPDIR, "left_panda.log")
@@ -109,6 +112,20 @@ def is_robot_on_network(namespace: str, timeout: int = 15):
         
     return False
 
+def run_bridge_thread(ip, ns):
+    """Starts a ROS 2 node for the bridge in a dedicated thread."""
+    # We must initialize rclpy for each thread or once globally
+    if not rclpy.ok():
+        rclpy.init()
+    
+    node = FrankaWebBridge(robot_ip=ip, namespace=ns)
+    try:
+        rclpy.spin(node)
+    except Exception as e:
+        print(f"Bridge Error for {ns}: {e}")
+    finally:
+        node.destroy_node()
+
 def launch_left_Panda(title: str, ip_left: str, log: str) -> Optional[subprocess.Popen]:
     
     print(f"\n{B}Launching Left Panda -> {ip_left} (ns=left){RE}")
@@ -120,6 +137,8 @@ def launch_left_Panda(title: str, ip_left: str, log: str) -> Optional[subprocess
     connect = is_robot_on_network("left", timeout=10)
     if connect:
         print(f"{G}✅Connection with left arm successful{RE}")
+        bridge_thread = threading.Thread(target=run_bridge_thread, args=(ip_left, "left"), daemon=True)
+        bridge_thread.start()
         return True
     else:
         print(f"❌{R}Connection fail, check the FCI and safe lock for left Panda{RE}")

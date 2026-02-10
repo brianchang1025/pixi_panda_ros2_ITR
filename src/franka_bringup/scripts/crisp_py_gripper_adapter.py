@@ -10,8 +10,9 @@ from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
 from rclpy.qos import qos_profile_system_default
+from rclpy.executors import MultiThreadedExecutor
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, Bool
 
 
 class GripperClient:
@@ -159,7 +160,11 @@ class CrispPyGripperAdapater(Node):
         super().__init__("crisp_py_gripper_adapter")
 
         self.command_topic = "gripper/gripper_position_controller/commands"
+        self.closing_command_topic = "gripper/gripper_closing_controller/commands"
         self.joint_state_topic = "gripper/joint_states"
+        self.closing_state_topic = "gripper/closing_state"
+        self.button_check_topic = "franka_buttons/check"
+        self.button_cross_topic = "franka_buttons/cross"
 
         self.joint_state_freq = 50
 
@@ -169,10 +174,34 @@ class CrispPyGripperAdapater(Node):
         self.gripper_client.open()
         self.is_closing = False
 
+        # self.create_subscription(
+        #     Float64MultiArray,
+        #     self.command_topic,
+        #     self.callback_command,
+        #     qos_profile_system_default,
+        #     callback_group=ReentrantCallbackGroup(),
+        # )
+
         self.create_subscription(
-            Float64MultiArray,
-            self.command_topic,
-            self.callback_command,
+            Bool,
+            self.closing_command_topic,
+            self.callback_closing_command,
+            qos_profile_system_default,
+            callback_group=ReentrantCallbackGroup(),
+        )
+
+        self.create_subscription(
+            Bool,
+            self.button_check_topic,
+            self.callback_button_check,
+            qos_profile_system_default,
+            callback_group=ReentrantCallbackGroup(),
+        )
+
+        self.create_subscription(
+            Bool,
+            self.button_cross_topic,
+            self.callback_button_cross,
             qos_profile_system_default,
             callback_group=ReentrantCallbackGroup(),
         )
@@ -184,7 +213,17 @@ class CrispPyGripperAdapater(Node):
             callback_group=ReentrantCallbackGroup(),
         )
 
-        self.create_timer(1 / self.joint_state_freq, self.callback_publish_joint_state)
+        self.closing_state_publisher = self.create_publisher(
+            Bool,
+            self.closing_state_topic,
+            qos_profile_system_default,
+            callback_group=ReentrantCallbackGroup(),
+        )
+
+        self.timer_group = ReentrantCallbackGroup()
+
+        self.create_timer(1 / self.joint_state_freq, self.callback_publish_joint_state, callback_group=self.timer_group)
+        self.create_timer(1 / self.joint_state_freq, self.callback_publish_closing_state, callback_group=self.timer_group)
         self.get_logger().info("The crisp_py gripper adapter started.")
         self.last_sent_width = None
 
@@ -201,31 +240,68 @@ class CrispPyGripperAdapater(Node):
 
         self.joint_state_publisher.publish(msg)
 
-    def callback_command(self, msg: Float64MultiArray):
-        """Callback to the gripper command."""
-        # NOTE: this only temporaily set to control the gripper with move function.
-        # For future work and teleoperation, it is necessary to use grasp function
-        gripper_command = round(msg.data[0], 3)
+    def callback_publish_closing_state(self):
+    # 1. Check if the variable is actually set
+        if self.is_closing is None:
+            self.get_logger().warn("Closing state is None, skipping publish.")
+            return
         
-        #self.gripper_client.move(width=gripper_command, speed=0.1)
+        msg = Bool()
+        
+        msg.data = bool(self.is_closing) # Force cast to bool
+
+        # 2. Add a log to confirm the publish command is reached
+        #self.get_logger().info(f"Publishing closing state: {msg.data}")
+        
+        # 3. Perform the publish
+        self.closing_state_publisher.publish(msg)
+
+    # def callback_command(self, msg: Float64MultiArray):
+    #     """Callback to the gripper command."""
+    #     # NOTE: this only temporaily set to control the gripper with move function.
+    #     # For future work and teleoperation, it is necessary to use grasp function
+    #     gripper_command = round(msg.data[0], 3)
+        
+    #     #self.gripper_client.move(width=gripper_command, speed=0.1)
 
 
-        # if self.last_sent_width is None :
-        #     self.gripper_client.move(width=gripper_command, speed=0.2)
-        #     self.last_sent_width = gripper_command
+    #     # if self.last_sent_width is None :
+    #     #     self.gripper_client.move(width=gripper_command, speed=0.2)
+    #     #     self.last_sent_width = gripper_command
 
-        # if  gripper_command != self.last_sent_width:
-        #     self.gripper_client.move(width=gripper_command, speed=0.2)
-        #     self.get_logger().info(f"Received a command to move the gripper: {msg}")
-        #     print(f"Received gripper command: {gripper_command}")
-        #     self.last_sent_width = gripper_command
+    #     # if  gripper_command != self.last_sent_width:
+    #     #     self.gripper_client.move(width=gripper_command, speed=0.2)
+    #     #     self.get_logger().info(f"Received a command to move the gripper: {msg}")
+    #     #     print(f"Received gripper command: {gripper_command}")
+    #     #     self.last_sent_width = gripper_command
 
-        # self.gripper_client.move(width=gripper_command, speed=0.1)
-        self.get_logger().info(f"Received a command to move the gripper: {msg}")
-        print(f"Received gripper command: {gripper_command}")
+    #     # self.gripper_client.move(width=gripper_command, speed=0.1)
+    #     self.get_logger().info(f"Received a command to move the gripper: {msg}")
+    #     print(f"Received gripper command: {gripper_command}")
 
+    #     if (
+    #         gripper_command <= 0.04
+    #         and self.gripper_client.is_open()
+    #         and not self.is_closing
+    #     ):
+    #         self.gripper_client.close()
+    #         self.is_closing = True
+    #         self
+    #         print("Closing gripper")
+    #     elif (
+    #         gripper_command > 0.04
+    #         and not self.gripper_client.is_open()
+    #         and self.is_closing
+    #     ):
+    #         self.gripper_client.open()
+    #         self.is_closing = False
+    #         print("Opening gripper")
+
+    def callback_closing_command(self, msg: Bool):
+        """Callback to the gripper state command."""
+        gripper_closing_command = msg.data
         if (
-            gripper_command <= 0.065
+            gripper_closing_command
             and self.gripper_client.is_open()
             and not self.is_closing
         ):
@@ -233,7 +309,7 @@ class CrispPyGripperAdapater(Node):
             self.is_closing = True
             print("Closing gripper")
         elif (
-            gripper_command > 0.04
+            not gripper_closing_command
             and not self.gripper_client.is_open()
             and self.is_closing
         ):
@@ -242,12 +318,46 @@ class CrispPyGripperAdapater(Node):
             print("Opening gripper")
     
 
+    def callback_button_check(self, msg: Bool):
+        """Callback to the check button."""
+        check_button_pressed = msg.data
+        if (
+            check_button_pressed
+            and self.gripper_client.is_open()
+            and not self.is_closing
+        ):
+            self.gripper_client.close()
+            self.is_closing = True
+            print("Check button pressed: Closing gripper")
+    
+    def callback_button_cross(self, msg: Bool):
+        """Callback to the cross button."""
+        cross_button_pressed = msg.data
+        if (
+            cross_button_pressed
+            and not self.gripper_client.is_open()
+            and self.is_closing
+        ):
+            self.gripper_client.open()
+            self.is_closing = False
+            print("Cross button pressed: Opening gripper")
+    
+
 def main():
     rclpy.init()
     adapter = CrispPyGripperAdapater()
-    rclpy.spin(adapter)
-
-    rclpy.shutdown()
+    
+    # This is the "Engine" that allows multiple callbacks at once
+    executor = MultiThreadedExecutor()
+    executor.add_node(adapter)
+    
+    try:
+        executor.spin()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        adapter.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":
