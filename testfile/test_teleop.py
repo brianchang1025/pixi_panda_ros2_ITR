@@ -1,8 +1,10 @@
 import time
+import numpy as np 
 from crisp_py.robot import make_robot
 from crisp_py.gripper.gripper import make_gripper
 
 # %%
+np.set_printoptions(precision=3, suppress=True)
 
 left_arm = make_robot("panda_left")
 right_arm = make_robot("panda_right")
@@ -26,8 +28,15 @@ right_gripper.open()
 
 time.sleep(0.5)
 print("Switching to teleop controllers...")
-# %%
-left_arm.controller_switcher_client.switch_controller("gravity_compensation")
+
+left_arm.cartesian_controller_parameters_client.load_param_config(
+    file_path="/home/cbrian/Frankabutton/pixi_panda_ros2_ITR/testfile/control/gravity_compensation.yaml"
+)
+left_arm.controller_switcher_client.switch_controller("cartesian_impedance_controller")
+
+right_arm.joint_controller_parameters_client.load_param_config(
+    file_path="/home/cbrian/Frankabutton/pixi_panda_ros2_ITR/testfile/control/joint_control.yaml"
+)
 right_arm.controller_switcher_client.switch_controller("joint_impedance_controller")
 
 
@@ -42,10 +51,10 @@ right_gripper.node.create_timer(1.0 / 100.0, lambda: sync(left_arm, right_arm, l
 
 try:
     while True:
-        print(f"Left arm joint values: {left_arm.joint_values}")
+        print(f"Left arm joint values (deg): {np.rad2deg(left_arm.joint_values)}")
         print(f"Left gripper value: {left_gripper.value}")
         
-        print(f"Right arm joint values: {right_arm.joint_values}")
+        print(f"Right arm joint values (deg): {np.rad2deg(right_arm.joint_values)}")
         print(f"Right gripper value: {right_gripper.value}")
         print("-" * 40)
         time.sleep(1.0)
