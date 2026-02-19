@@ -11,7 +11,7 @@ import sys
 import tempfile
 import time
 from typing import Optional
-from franka_bridge_node import FrankaWebBridge  # Ensure this is in the same directory or properly installed
+from pixi_panda_ros2_ITR.scripts.utils.franka_bridge_node import FrankaWebBridge  # Ensure this is in the same directory or properly installed
 
 TMPDIR = os.environ.get("TMPDIR") or tempfile.mkdtemp(prefix="panda_connect.")
 LOG1 = os.path.join(TMPDIR, "left_panda.log")
