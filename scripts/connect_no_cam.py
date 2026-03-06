@@ -106,16 +106,58 @@ def main():
 
     # 5. Persistent Control
     print(f"\n🚀 {COLORS['G']}Lab Environment Ready.{COLORS['RE']}")
-    print(f"Press {COLORS['B']}'q'{COLORS['RE']} to terminate all processes and exit.")
     
+    
+    # persistent control loop: user can press
+    #   'q' - quit everything
+    #   'l' - reboot left arm
+    #   'r' - reboot right arm
+    print(f"\nPersistent control active: press 'q' to quit, 'l' to reboot left, 'r' to reboot right.")
     while True:
-        if read_single_key().lower() == 'q':
+        k = read_single_key().lower()
+        if k == 'q':
             node_l.cleanup()
             node_r.cleanup()
             rclpy.shutdown()
             time.sleep(1)  # Give some time for cleanup logs to print
             kill_all()
             break
+        elif k == 'l':
+            # reboot left arm: restart web bridge then relaunch arm
+            print(f"\n{COLORS['B']}Rebooting Left Panda web bridge...{COLORS['RE']}")
+            node_l.cleanup()
+            node_l = FrankaWebBridge(robot_ip=ip1, namespace=ip1_ns)
+            executor.add_node(node_l)
+            time.sleep(0.5)  # give bridge a moment to reinitialize
+
+            # wait for user to signal readiness before starting the arm process
+            print(f"Press {COLORS['B']}Enter{COLORS['RE']} when ready to restart the Left Panda")
+            while True:
+                r = read_single_key()
+                if r == '\r' or r == '\n' or r.lower() == 'enter':
+                    break
+            print(f"{COLORS['B']}Relaunching Left Panda process...{COLORS['RE']}")
+            left_arm.launch(launch_in_terminal)
+            time.sleep(1)  # let launch settle
+        elif k == 'r':
+            # reboot right arm: restart web bridge then relaunch arm
+            print(f"\n{COLORS['B']}Rebooting Right Panda web bridge...{COLORS['RE']}")
+            node_r.cleanup()
+            node_r = FrankaWebBridge(robot_ip=ip2, namespace=ip2_ns)
+            executor.add_node(node_r)
+            time.sleep(0.5)
+
+            # wait for user confirmation before restart
+            print(f"Press {COLORS['B']}Enter{COLORS['RE']} when ready to restart the Right Panda")
+            while True:
+                r = read_single_key()
+                if r == '\r' or r == '\n' or r.lower() == 'enter':
+                    break
+            # relaunch right arm; status checks in the outer loop cover safety
+            print(f"{COLORS['B']}Relaunching Right Panda process...{COLORS['RE']}")
+            right_arm.launch(launch_in_terminal)
+            time.sleep(1)
+        # additional keys could be handled here
     
     # 2. Shutdown RO
 if __name__ == "__main__":

@@ -1,8 +1,25 @@
+
+# ROS2 node bridging Franka robot desk buttons and web interface.
+
+# This utility module defines `FrankaWebBridge`, a node that logs into a
+# Franka robot via its web API, obtains a control token, listens for
+# wheel/indicator button events over a WebSocket, and republishes them as
+# standard ROS2 `Bool` messages. It handles login, token management, and
+# cleanup to ensure the robot is properly locked when the node shuts down.
+
+#inspired by
+#https://github.com/franzesegiovanni/franka_buttons
+#https://github.com/danielsanjosepro/franka_buttons_ros2
+
+# core ROS2 libraries
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Bool
+
+# standard utilities used throughout the bridge process
 import hashlib, base64, json, ssl, threading, requests, urllib3
-# Note: Ensure your utils folder is in the python path or remove the COLORS import for standalone testing
+
+# color constants for pretty-printing; utils folder may not be on PYTHONPATH
 try:
     from utils.utils import COLORS
 except ImportError:
@@ -54,10 +71,6 @@ class FrankaWebBridge(Node):
             self.franka_lock_unlock = FrankaLockUnlock(self.ip, self.user, self.pw, relock=True)
             self.franka_lock_unlock.run(unlock=True, wait=True, request=True, fci=True, persistent=True, home=True)
             
-            # login_url = f'https://{self.ip}/admin/api/login'
-            # payload = {'login': self.user, 'password': self.encode_password(self.user, self.pw)}
-            # r = self.session.post(login_url, json=payload, timeout=5)
-            
             # 2. Get Token (the response text is the token)
             self.token = self.franka_lock_unlock.get_logged_in_token()
             print(f"🌐 {COLORS['G']}WebBridge Online{COLORS['RE']} [{self.ip}]")
@@ -97,11 +110,34 @@ class FrankaWebBridge(Node):
                 self.get_logger().warn(f"WebSocket Loop closed: {e}")
     
     def cleanup(self):
-        """Releases the control token when the node stops."""
+        """Release resources held by the bridge.
+
+        This is intended to be called before the ROS node is destroyed.  The
+        method will:
+
+        * Force-lock/unlock the robot and release any control token via the
+          underlying ``FrankaLockUnlock`` helper.  This ensures the robot is
+          left in a safe state.
+        * Delete the control token on the HTTP API if one was obtained.
+        * Close the HTTP ``requests.Session`` to free sockets.
+
+        Callers should still destroy the ROS node (``node.destroy_node()``)
+        and shut down ``rclpy``; the websocket listener thread will exit when
+        ``rclpy.ok()`` becomes False.
+        """
         if self.token_id:
             #print(f"\n[{self.ip}] 🔒 Releasing control token...")
-            self.franka_lock_unlock._cleanup() # Force lock to ensure it's released
-            self.session.delete(f"{self.base_url}/admin/api/control-token", json={'token': self.token})
+            self.franka_lock_unlock._cleanup()  # release/lock robot and token
+            try:
+                self.session.delete(f"{self.base_url}/admin/api/control-token", json={'token': self.token})
+            except Exception:
+                pass
+
+        # always close the HTTP session to release resources
+        try:
+            self.session.close()
+        except Exception:
+            pass
 
 # def main(args=None):
 #     rclpy.init(args=args)

@@ -1,4 +1,18 @@
-"""Try to follow a "figure eight" target on the yz plane."""
+"""
+Dual-arm figure-eight test using crisp_py interface.
+
+This script drives both Franka Panda arms through a figure-eight trajectory in
+the YZ plane. It serves as a functional test of the crisp_py robot interface by:
+
+- Initializing two arm controllers (left and right)
+- Homing the robots and switching to cartesian impedance control
+- Publishing a time-varying target pose that traces a figure-eight
+- Recording end-effector and target poses for later plotting
+- Returning the arms to home and shutting down
+
+The goal is simply to verify that crisp_py can command the Panda arms and read
+state successfully; trajectory accuracy is secondary.
+"""
 
 import os 
 # %%
@@ -43,16 +57,7 @@ left_arm.controller_switcher_client.switch_controller("cartesian_impedance_contr
 right_arm.controller_switcher_client.switch_controller("cartesian_impedance_controller")
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-# 2. Join it with the subfolder and filename
-# This creates a full absolute path dynamically
-yaml_path = os.path.join(script_dir, "control", "default_cartesian_impedance.yaml")
 
-left_arm.cartesian_controller_parameters_client.load_param_config(
-    file_path=yaml_path
-)
-right_arm.cartesian_controller_parameters_client.load_param_config(
-    file_path=yaml_path
-)
 # %%
 # The move_to function will publish a pose to /target_pose while interpolation linearly
 left_arm.move_to(position=center, speed=0.15)
@@ -61,6 +66,7 @@ right_arm.move_to(position=center, speed=0.15)
 # %%
 # The set_target will directly publish the pose to /target_pose
 ee_poses = []
+ee_poses_r = []
 target_poses = []
 ts = []
 
@@ -85,6 +91,7 @@ while t < max_time:
     rate_right.sleep()
 
     ee_poses.append(left_arm.end_effector_pose.copy())
+    ee_poses_r.append(right_arm.end_effector_pose.copy())
     target_poses.append(left_arm._target_pose.copy())
     ts.append(t)
 
@@ -97,6 +104,7 @@ while t < max_time + 1.0:
     rate_right.sleep()
 
     ee_poses.append(left_arm.end_effector_pose.copy())
+    ee_poses_r.append(right_arm.end_effector_pose.copy())
     target_poses.append(left_arm._target_pose.copy())
     ts.append(t)
 
@@ -112,17 +120,26 @@ z_t = [target_pose_sample.position[2] for target_pose_sample in target_poses]
 
 # %%
 # === Normal params ===
+# split recorded end-effector poses into left and right trajectories
+# left and right ee pose lists were collected in the motion loop
+# convert to separate y/z lists for plotting
+
 y_ee = [ee_pose.position[1] for ee_pose in ee_poses]
 z_ee = [ee_pose.position[2] for ee_pose in ee_poses]
+y_ee_r = [ee_pose.position[1] for ee_pose in ee_poses_r]
+z_ee_r = [ee_pose.position[2] for ee_pose in ee_poses_r]
 
 # %%
 fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-ax[0].plot(y_ee, z_ee, label="current")
+# plot left and right trajectories alongside the target
+ax[0].plot(y_ee, z_ee, label="left current")
+ax[0].plot(y_ee_r, z_ee_r, label="right current")
 ax[0].plot(y_t, z_t, label="target", linestyle="--")
 ax[0].set_xlabel("$y$")
 ax[0].set_ylabel("$z$")
-# ax[0].legend()
-ax[1].plot(ts, z_ee, label="current")
+ax[0].legend()
+ax[1].plot(ts, z_ee, label="left current")
+ax[1].plot(ts, z_ee_r, label="right current")
 ax[1].plot(ts, z_t, label="target", linestyle="--")
 ax[1].set_xlabel("$t$")
 ax[1].legend()
